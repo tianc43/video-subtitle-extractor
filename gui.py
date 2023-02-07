@@ -5,7 +5,7 @@
 @FileName: gui.py
 @desc: 字幕提取器图形化界面
 """
-import backend.main
+# import backend.main
 import os
 import configparser
 import PySimpleGUI as sg
@@ -35,8 +35,8 @@ class SubtitleExtractorGUI:
 
     def __init__(self):
         # 初次运行检查运行环境是否正常
-        from paddle import fluid
-        fluid.install_check.run_check()
+        # from paddle import fluid
+        # fluid.install_check.run_check()
         self.font = 'Arial 10'
         self.theme = 'LightBrown12'
         sg.theme(self.theme)
@@ -48,7 +48,7 @@ class SubtitleExtractorGUI:
         self.video_preview_width = 960
         self.video_preview_height = self.video_preview_width * 9 // 16
         # 默认组件大小
-        self.horizontal_slider_size = (120, 20)
+        self.horizontal_slider_size = (100, 20)
         self.output_size = (100, 10)
         self.progressbar_size = (60, 20)
         # 分辨率低于1080
@@ -225,13 +225,15 @@ class SubtitleExtractorGUI:
                     self.frame_height = self.video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                     # 获取视频的宽度
                     self.frame_width = self.video_cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+                    
+                    self.frame_wh_ratio = self.frame_width/self.frame_height
                     # 获取视频的帧率
                     self.fps = self.video_cap.get(cv2.CAP_PROP_FPS)
                     # 调整视频帧大小，使播放器能够显示
                     resized_frame = self._img_resize(frame)
                     # resized_frame = cv2.resize(src=frame, dsize=(self.video_preview_width, self.video_preview_height))
                     # 显示视频帧
-                    self.window['-DISPLAY-'].update(data=cv2.imencode('.png', resized_frame)[1].tobytes())
+                    self.window['-DISPLAY-'].update(data=cv2.imencode('.png', frame)[1].tobytes())
                     # 更新视频进度条滑块range
                     self.window['-SLIDER-'].update(range=(1, self.frame_count))
                     self.window['-SLIDER-'].update(1)
@@ -349,10 +351,14 @@ class SubtitleExtractorGUI:
 
     def _img_resize(self, image):
         top, bottom, left, right = (0, 0, 0, 0)
-        height, width = image.shape[0], image.shape[1]
+        # 宽度是960， 高度应该是540
+        resized_image = cv2.resize(image,(int(self.video_preview_height*self.frame_wh_ratio),self.video_preview_height))
+        height, width = resized_image.shape[0], resized_image.shape[1]
+        # print("resized:",height,width)
         # 对长短不想等的图片，找到最长的一边
         longest_edge = height
         # 计算短边需要增加多少像素宽度使其与长边等长
+        # 如果是竖版视频则需要添加左右padding
         if width < longest_edge:
             dw = longest_edge - width
             left = dw // 2
@@ -360,8 +366,12 @@ class SubtitleExtractorGUI:
         else:
             pass
         # 给图像增加边界
-        constant = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
-        return cv2.resize(constant, (self.video_preview_width, self.video_preview_height))
+        # print(top,bottom,left,right)
+        # print(self.video_preview_height,self.video_preview_width)
+        # print(self.frame_height,self.frame_width)
+        constant = cv2.copyMakeBorder(resized_image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+        # return cv2.resize(constant, (self.video_preview_width, self.video_preview_height))
+        return constant
 
     def set_subtitle_config(self, y, h, x, w):
         # 写入配置文件
