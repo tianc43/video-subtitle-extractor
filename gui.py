@@ -215,7 +215,7 @@ class SubtitleExtractorGUI:
                                                default_value=0, key='-X-SLIDER-W-'),
                                  ]], pad=((15, 5), (0, 0)))
                     ],
-                    [sg.Output(size=self.output_size, font=self.font)],
+                    [sg.Multiline(size=self.output_size, font=self.font, key='-MULTILINE-', reroute_stdout=True, reroute_stderr=True, reroute_cprint=True)],
                 ])
             ]
         ]
@@ -336,14 +336,27 @@ class SubtitleExtractorGUI:
                 x_p = self.xmin / self.frame_width
                 w_p = (self.xmax - self.xmin) / self.frame_width
                 self.set_subtitle_config(y_p, h_p, x_p, w_p)
-
-                def task():
-                    while self.video_paths:
-                        video_path = self.video_paths.pop()
-                        self.se = backend.main.SubtitleExtractor(
-                            video_path, subtitle_area)
-                        self.se.run()
-                Thread(target=task, daemon=True).start()
+                # print(subtitle_area)
+                # def task():
+                #     while self.video_paths:
+                #         video_path = self.video_paths.pop()
+                #         self.se = backend.main.SubtitleExtractor(
+                #             video_path, subtitle_area)
+                #         self.se.run()
+                # Thread(target=task, daemon=True).start()
+                x_left,y_top,sub_width,sub_height = 0, self.ymin, int(self.frame_width), self.ymax-self.ymin
+                if not os.path.exists("images"):
+                    os.mkdir("images")
+                clip_video_cmd = 'ffmpeg -hide_banner -i "{}" -vf "crop=x={}:y={}:w={}:h={},fps=1" images/image-%05d.jpg'.format(self.video_path,x_left,y_top,sub_width,sub_height)
+                # os.popen(clip_video_cmd)
+                import subprocess
+                import sys
+                # self.window['-MULTILINE-']['fileno'] = sys.stdout.fileno
+                # self.window['-MULTILINE-']['fileno'] = sys.stdout.fileno
+                p = subprocess.Popen(clip_video_cmd, shell=True, stdout=sys.__stdout__)
+                retval = p.wait()
+                print("retval",retval)
+                # self.window['-OUTPUT-']
                 self.video_cap.release()
                 self.video_cap = None
 
