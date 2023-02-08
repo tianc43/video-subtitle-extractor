@@ -13,6 +13,8 @@ import cv2
 from threading import Thread
 import multiprocessing
 
+from ffmpeg import FfmpegHandle
+
 
 class SubtitleExtractorGUI:
     def _load_config(self):
@@ -46,7 +48,7 @@ class SubtitleExtractorGUI:
             os.path.dirname(__file__), 'design', 'vse.ico')
         self._load_config()
         self.screen_width, self.screen_height = sg.Window.get_screen_size()
-        print(self.screen_width, self.screen_height)
+        # print(self.screen_width, self.screen_height)
         # 设置视频预览区域大小
         self.video_preview_height = 640
         self.video_preview_width = self.video_preview_height * 16 // 9
@@ -107,7 +109,7 @@ class SubtitleExtractorGUI:
                 break
             # 更新进度条
             if self.se is not None:
-                self.window['-PROG-'].update(self.se.progress_total)
+                # self.window['-PROG-'].update(self.se.progress_total)
                 if self.se.isFinished:
                     # 1) 打开修改字幕滑块区域按钮
                     self.window['-Y-SLIDER-'].update(disabled=False)
@@ -250,6 +252,8 @@ class SubtitleExtractorGUI:
                         cv2.CAP_PROP_FRAME_WIDTH)
 
                     self.frame_wh_ratio = self.frame_width/self.frame_height
+
+                    # self.video_cap
                     # 获取视频的帧率
                     self.fps = self.video_cap.get(cv2.CAP_PROP_FPS)
                     # 调整视频帧大小，使播放器能够显示
@@ -337,25 +341,20 @@ class SubtitleExtractorGUI:
                 w_p = (self.xmax - self.xmin) / self.frame_width
                 self.set_subtitle_config(y_p, h_p, x_p, w_p)
                 # print(subtitle_area)
-                # def task():
-                #     while self.video_paths:
-                #         video_path = self.video_paths.pop()
-                #         self.se = backend.main.SubtitleExtractor(
-                #             video_path, subtitle_area)
-                #         self.se.run()
-                # Thread(target=task, daemon=True).start()
-                x_left,y_top,sub_width,sub_height = 0, self.ymin, int(self.frame_width), self.ymax-self.ymin
-                if not os.path.exists("images"):
-                    os.mkdir("images")
-                clip_video_cmd = 'ffmpeg -hide_banner -i "{}" -vf "crop=x={}:y={}:w={}:h={},fps=1" images/image-%05d.jpg'.format(self.video_path,x_left,y_top,sub_width,sub_height)
+                def task():
+                    while self.video_paths:
+                        video_path = self.video_paths.pop()
+                        self.se = FfmpegHandle(
+                            video_path, subtitle_area)
+                        self.se.run()
+                    print("所有视频文件全部处理完成")
+                Thread(target=task, daemon=True).start()
                 # os.popen(clip_video_cmd)
                 import subprocess
                 import sys
                 # self.window['-MULTILINE-']['fileno'] = sys.stdout.fileno
                 # self.window['-MULTILINE-']['fileno'] = sys.stdout.fileno
-                p = subprocess.Popen(clip_video_cmd, shell=True, stdout=sys.__stdout__)
-                retval = p.wait()
-                print("retval",retval)
+                
                 # self.window['-OUTPUT-']
                 self.video_cap.release()
                 self.video_cap = None
